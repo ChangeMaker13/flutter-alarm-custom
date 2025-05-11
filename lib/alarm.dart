@@ -48,6 +48,21 @@ class Alarm {
   @Deprecated('Use [scheduled] and [ringing] streams instead.')
   static final ringStream = StreamController<AlarmSettings>();
 
+  /// 최근에 중지 요청된 알람 ID들 (race condition 방지용)
+  static final Set<int> _recentlyStoppedIds = {};
+
+  /// 최근 중지 요청된 알람 ID인지 확인
+  static bool isRecentlyStopped(int id) {
+    return _recentlyStoppedIds.contains(id);
+  }
+
+  /// 일정 시간 후 중지된 알람 ID 목록에서 제거
+  static void _cleanupStoppedIds() {
+    Future.delayed(const Duration(seconds: 5), () {
+      _recentlyStoppedIds.clear();
+    });
+  }
+
   /// Initializes Alarm services.
   ///
   /// Also calls [checkAlarm] that will reschedule alarms that were set before
@@ -161,15 +176,20 @@ class Alarm {
 
   /// Stops alarm.
   static Future<bool> stop(int id) async {
-    await AlarmStorage.unsaveAlarm(id);
-    updateStream.add(id);
+    // 즉시 메모리에 중지 요청 기록
+    _recentlyStoppedIds.add(id);
+    _cleanupStoppedIds();
 
+    // 먼저 네이티브 플랫폼을 통해 알람을 중지
     final success =
         iOS ? await IOSAlarm.stopAlarm(id) : await AndroidAlarm.stop(id);
 
+    // 중지가 성공한 후 스토리지에서 알람 데이터 삭제
     if (success) {
+      await AlarmStorage.unsaveAlarm(id);
       _scheduled.add(_scheduled.value.removeById(id));
       _ringing.add(_ringing.value.removeById(id));
+      updateStream.add(id);
     }
 
     return success;

@@ -15,6 +15,7 @@ import com.gdelataillade.alarm.alarm.AlarmService
 import com.gdelataillade.alarm.models.AlarmSettings
 import com.gdelataillade.alarm.services.AlarmStorage
 import com.gdelataillade.alarm.services.NotificationOnKillService
+import com.gdelataillade.alarm.services.StopRequestTracker
 import io.flutter.Log
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -37,6 +38,11 @@ class AlarmApiImpl(private val context: Context) : AlarmApi {
     override fun stopAlarm(alarmId: Long, callback: (Result<Unit>) -> Unit) {
         val id = alarmId.toInt()
         var alarmWasRinging = false
+        
+        // 메모리 내 중지 상태 표시
+        StopRequestTracker.markAlarmAsStopRequested(id)
+        
+        // 알람이 울리고 있는지 확인 및 중지
         if (AlarmService.ringingAlarmIds.contains(id)) {
             alarmWasRinging = true
             val stopIntent = Intent(context, AlarmService::class.java)
@@ -59,9 +65,7 @@ class AlarmApiImpl(private val context: Context) : AlarmApi {
         alarmManager.cancel(pendingIntent)
 
         alarmIds.remove(id)
-        AlarmStorage(context).unsaveAlarm(id)
-        updateWarningNotificationState()
-
+        
         // If the alarm was ringing it is the responsibility of the AlarmService to send the stop
         // signal to Flutter.
         if (!alarmWasRinging) {
@@ -77,6 +81,11 @@ class AlarmApiImpl(private val context: Context) : AlarmApi {
                 }
             }
         }
+        
+        // 마지막으로 알람 저장소에서 삭제 (순서 변경됨)
+        AlarmStorage(context).unsaveAlarm(id)
+        updateWarningNotificationState()
+        
         callback(Result.success(Unit))
     }
 

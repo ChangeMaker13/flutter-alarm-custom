@@ -44,28 +44,29 @@ class AlarmStorage(context: Context) {
     }
 
     fun getSavedAlarms(): List<AlarmSettings> {
-        return runBlocking {
-            val preferences = dataStore.data.map { prefs ->
-                prefs.asMap().filterKeys { it.name.startsWith(PREFIX) }
-            }.first()
+        val alarms = mutableListOf<AlarmSettings>()
 
-            val alarms = mutableListOf<AlarmSettings>()
-            preferences.forEach { (key, value) ->
-                if (value is String) {
-                    try {
-                        val alarm = Json.decodeFromString<AlarmSettings>(value)
-                        alarms.add(alarm)
-                    } catch (e: Exception) {
-                        Log.e(
-                            TAG,
-                            "Error parsing alarm settings for key ${key.name}: ${e.message}"
-                        )
+        return runBlocking {
+            dataStore.data.map { preferences ->
+                preferences.asMap().filter { it.key.name.startsWith(PREFIX) }
+                    .mapNotNull {
+                        try {
+                            Json.decodeFromString<AlarmSettings>(it.value as String)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing alarm settings: ${e.message}")
+                            null
+                        }
                     }
-                } else {
-                    Log.w(TAG, "Skipping non-alarm preference with key: ${key.name}")
-                }
-            }
-            alarms
+            }.first()
+        }
+    }
+
+    fun checkAlarmExists(id: Int): Boolean {
+        return runBlocking {
+            val key = stringPreferencesKey("$PREFIX$id")
+            dataStore.data.map { preferences ->
+                preferences.contains(key)
+            }.first()
         }
     }
 }

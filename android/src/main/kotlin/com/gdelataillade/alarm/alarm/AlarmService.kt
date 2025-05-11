@@ -4,6 +4,7 @@ import com.gdelataillade.alarm.services.AudioService
 import com.gdelataillade.alarm.services.AlarmStorage
 import com.gdelataillade.alarm.services.VibrationService
 import com.gdelataillade.alarm.services.VolumeService
+import com.gdelataillade.alarm.services.StopRequestTracker
 
 import android.app.Service
 import android.app.PendingIntent
@@ -123,16 +124,35 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
+        // 알람이 실제로 저장소에 존재하는지 확인
+        val alarmExists = alarmStorage?.checkAlarmExists(id) ?: false
+        if (!alarmExists) {
+            Log.d(TAG, "Alarm with id $id no longer exists in storage. It may have been stopped already. Ignoring.")
+            return START_NOT_STICKY
+        }
+        
+        // 이미 중지 요청이 있었는지 확인
+        if (StopRequestTracker.isStopRequested(id)) {
+            Log.d(TAG, "Alarm with id $id was requested to stop. Ignoring alarm start request.")
+            StopRequestTracker.clearStopRequest(id)
+            return START_NOT_STICKY
+        }
+
         if (alarmSettings.androidFullScreenIntent) {
             AlarmRingingLiveData.instance.update(true)
         }
 
         // Notify the plugin about the alarm ringing
         AlarmPlugin.alarmTriggerApi?.alarmRang(id.toLong()) {
+            // 알람이 성공적으로 시작된 경우에만 처리
             if (it.isSuccess) {
                 Log.d(TAG, "Alarm rang notification for $id was processed successfully by Flutter.")
             } else {
-                Log.d(TAG, "Alarm rang notification for $id encountered error in Flutter.")
+                // 오류 발생 시(예: 알람을 찾을 수 없음) 알람을 중지
+                Log.d(TAG, "Alarm rang notification for $id encountered error in Flutter. Stopping this alarm.")
+                if(shouldStopAlarmOnTermination) {
+                    stopAlarm(id)
+                }
             }
         }
 
@@ -231,8 +251,13 @@ class AlarmService : Service() {
     }
 
     private fun unsaveAlarm(id: Int, shouldStopAlarm: Boolean = true) {
+        // 1. 먼저 알람 중지
+        if(shouldStopAlarm == true) stopAlarm(id)
+        
+        // 2. 그 다음 저장소에서 알람 정보 삭제
         alarmStorage?.unsaveAlarm(id)
-        // Notify the plugin about the alarm being stopped.
+        
+        // 3. Flutter에 알람 중지 알림
         AlarmPlugin.alarmTriggerApi?.alarmStopped(id.toLong()) {
             if (it.isSuccess) {
                 Log.d(TAG, "Alarm stopped notification for $id was processed successfully by Flutter.")
@@ -240,8 +265,6 @@ class AlarmService : Service() {
                 Log.d(TAG, "Alarm stopped notification for $id encountered error in Flutter.")
             }
         }
-
-        if(shouldStopAlarm == true) stopAlarm(id)
     }
 
     private fun stopAlarm(id: Int) {
