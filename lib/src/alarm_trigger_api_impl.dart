@@ -96,6 +96,7 @@ class AlarmTriggerApiImpl extends AlarmTriggerApi {
     }
 
     final settings = await Alarm.getAlarm(alarmId);
+
     if (settings == null) {
       _log.warning('Alarm with id $alarmId started ringing but the settings '
           'object could not be found. This might happen if the alarm was stopped '

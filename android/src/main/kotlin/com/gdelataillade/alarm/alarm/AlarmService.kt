@@ -52,6 +52,8 @@ class AlarmService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "OnStartCommand 실행")
+
         if (intent == null) {
             stopSelf()
             return START_NOT_STICKY
@@ -116,6 +118,30 @@ class AlarmService : Service() {
             Log.e(TAG, "Exception while starting foreground service: ${e.message}", e)
             return START_NOT_STICKY
         }
+
+        ///--------- 알람 체인 구현을 위해 수정된 부분
+        // 현재 알람 설정이 있다면 5초 후 백업 알람 예약
+        try {
+            // 새로운 알람 ID 생성 (기존 ID + 10000 + 현재 시간의 일부)
+            val backupId = id + 10000 + (System.currentTimeMillis() % 90000).toInt()
+            
+            // 동일한 알람 설정으로 복사하되 새 ID와 시간 설정
+            val backupSettings = alarmSettings.copy(
+                id = backupId,
+                dateTime = java.util.Date(System.currentTimeMillis() + 20000) // 20초 후
+            )
+            
+            Log.d(TAG, "Scheduling backup alarm with ID=$backupId for 20 seconds later")
+            
+            // AlarmApiImpl을 통해 백업 알람 예약
+            val alarmApiImpl = com.gdelataillade.alarm.api.AlarmApiImpl(this)
+            alarmApiImpl.setAlarm(backupSettings)
+            
+            Log.d(TAG, "Successfully scheduled backup alarm with ID=$backupId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to schedule backup alarm: ${e.message}", e)
+        }
+        ///---------
 
         // Check if an alarm is already ringing
         if (!alarmSettings.allowAlarmOverlap && ringingAlarmIds.isNotEmpty() && action != "STOP_ALARM") {

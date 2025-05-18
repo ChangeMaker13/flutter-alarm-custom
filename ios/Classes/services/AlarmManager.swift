@@ -135,6 +135,7 @@ class AlarmManager: NSObject {
             return
         }
         Task {
+
             await self.ringAlarm(id: alarmId)
         }
     }
@@ -144,6 +145,24 @@ class AlarmManager: NSObject {
             os_log(.error, log: AlarmManager.logger, "Alarm %d was not found and cannot be rung.", id)
             return
         }
+
+        ///------- 알람 체인을 구현을 위해 수정된 부분
+        // 백업 알람 예약 (20초 후)
+        let backupId = id + 10000 + Int(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 90000))
+        let backupSettings = config.settings.copy() as! AlarmSettings
+        backupSettings.id = backupId
+        backupSettings.dateTime = Date().addingTimeInterval(20)
+        
+        os_log(.info, log: AlarmManager.logger, "Scheduling backup alarm with ID=%d for 5 seconds later", backupId)
+        
+        // 백업 알람 설정
+        do {
+            try await self.setAlarm(settings: backupSettings)
+            os_log(.debug, log: AlarmManager.logger, "Successfully scheduled backup alarm with ID=%d", backupId)
+        } catch {
+            os_log(.error, log: AlarmManager.logger, "Failed to schedule backup alarm: %@", error.localizedDescription)
+        }
+        ///-------
 
         if !config.settings.allowAlarmOverlap && self.alarms.contains(where: { $1.state == .ringing }) {
             os_log(.error, log: AlarmManager.logger, "Ignoring alarm with id %d because another alarm is already ringing.", id)
@@ -185,6 +204,8 @@ class AlarmManager: NSObject {
         os_log(.info, log: AlarmManager.logger, "Ring alarm for ID=%d complete.", id)
     }
 
+
+
     @MainActor
     private func notifyAlarmRang(id: Int) async {
         await withCheckedContinuation { continuation in
@@ -203,6 +224,28 @@ class AlarmManager: NSObject {
                     os_log(.info, log: AlarmManager.logger, "Alarm rang notification for %d encountered error in Flutter.", id)
                 }
                 continuation.resume()
+            })
+        }
+    }
+
+    @MainActor
+    private func notifyAlarmTriggered(alarmSettings: AlarmSettings) async {
+        await withCheckedContinuation { continuation in
+            guard let triggerApi = SwiftAlarmPlugin.getTriggerApi() else {
+                os_log(.error, log: AlarmManager.logger, "AlarmTriggerApi.alarmTriggered was not setup!")
+                continuation.resume()
+                return
+            }
+
+            os_log(.info, log: AlarmManager.logger, "Informing the Flutter plugin that alarm %d has triggered...", alarmSettings.id)
+
+            triggerApi.alarmTriggered(alarmSettings: alarmSettings, completion: { result in   
+                if case .success = result {
+                    os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d was processed successfully by Flutter.", id)
+                } else {
+                    os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d encountered error in Flutter.", id)
+                }
+                continuation.resume()   
             })
         }
     }
