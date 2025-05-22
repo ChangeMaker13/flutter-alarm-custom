@@ -162,6 +162,8 @@ class AlarmManager: NSObject {
         } catch {
             os_log(.error, log: AlarmManager.logger, "Failed to schedule backup alarm: %@", error.localizedDescription)
         }
+
+        await self.notifyAlarmRang(id: id)
         ///-------
 
         if !config.settings.allowAlarmOverlap && self.alarms.contains(where: { $1.state == .ringing }) {

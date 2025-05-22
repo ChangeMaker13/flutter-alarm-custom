@@ -141,6 +141,10 @@ class AlarmService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to schedule backup alarm: ${e.message}", e)
         }
+
+        AlarmPlugin.alarmTriggerApi?.alarmRang(id.toLong()) {
+            
+        }
         ///---------
 
         // Check if an alarm is already ringing
