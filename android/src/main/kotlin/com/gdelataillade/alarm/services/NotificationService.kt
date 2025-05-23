@@ -89,7 +89,7 @@ class NotificationHandler(private val context: Context) {
         }
 
         notificationSettings.let {
-            if (it.stopButton != null) {
+            if (false && it.stopButton != null) {
                 notificationBuilder.addAction(0, it.stopButton, stopPendingIntent)
             }
 

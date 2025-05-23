@@ -69,13 +69,15 @@ class NotificationManager: NSObject {
         }
         content.userInfo = [NotificationManager.userInfoAlarmIdKey: id]
 
-        if let stopButtonTitle = notificationSettings.stopButton {
-            let categoryIdentifier = "\(NotificationManager.categoryWithActionIdentifierPrefix)\(stopButtonTitle)"
-            await registerCategoryIfNeeded(forActionTitle: stopButtonTitle)
-            content.categoryIdentifier = categoryIdentifier
-        } else {
-            content.categoryIdentifier = NotificationManager.categoryWithoutActionIdentifier
-        }
+        // if let stopButtonTitle = notificationSettings.stopButton {
+        //     let categoryIdentifier = "\(NotificationManager.categoryWithActionIdentifierPrefix)\(stopButtonTitle)"
+        //     await registerCategoryIfNeeded(forActionTitle: stopButtonTitle)
+        //     content.categoryIdentifier = categoryIdentifier
+        // } else {
+        //     content.categoryIdentifier = NotificationManager.categoryWithoutActionIdentifier
+        // }
+
+        content.categoryIdentifier = NotificationManager.categoryWithoutActionIdentifier
 
         let request = UNNotificationRequest(identifier: "\(NotificationManager.notificationIdentifierPrefix)\(id)", content: content, trigger: nil)
         do {
