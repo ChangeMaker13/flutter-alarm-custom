@@ -167,7 +167,7 @@ class AlarmManager: NSObject {
         
         // 백업 알람 설정
         do {
-            try await self.setAlarm(settings: backupSettings)
+            try await self.setAlarm(alarmSettings: backupSettings)
             os_log(.debug, log: AlarmManager.logger, "Successfully scheduled backup alarm with ID=%d", backupId)
         } catch {
             os_log(.error, log: AlarmManager.logger, "Failed to schedule backup alarm: %@", error.localizedDescription)
