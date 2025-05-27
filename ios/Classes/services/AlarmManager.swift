@@ -149,9 +149,19 @@ class AlarmManager: NSObject {
         ///------- 알람 체인을 구현을 위해 수정된 부분
         // 백업 알람 예약 (20초 후)
         let backupId = id + 10000 + Int(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 90000))
-        let backupSettings = config.settings.copy() as! AlarmSettings
-        backupSettings.id = backupId
-        backupSettings.dateTime = Date().addingTimeInterval(20)
+        let backupSettings = AlarmSettings(
+            id: backupId,
+            dateTime: Date().addingTimeInterval(20),
+            assetAudioPath: config.settings.assetAudioPath,
+            volumeSettings: config.settings.volumeSettings,
+            notificationSettings: config.settings.notificationSettings,
+            loopAudio: config.settings.loopAudio,
+            vibrate: config.settings.vibrate,
+            warningNotificationOnKill: config.settings.warningNotificationOnKill,
+            androidFullScreenIntent: config.settings.androidFullScreenIntent,
+            allowAlarmOverlap: config.settings.allowAlarmOverlap,
+            iOSBackgroundAudio: config.settings.iOSBackgroundAudio
+        )
         
         os_log(.info, log: AlarmManager.logger, "Scheduling backup alarm with ID=%d for 5 seconds later", backupId)
         
@@ -230,27 +240,27 @@ class AlarmManager: NSObject {
         }
     }
 
-    @MainActor
-    private func notifyAlarmTriggered(alarmSettings: AlarmSettings) async {
-        await withCheckedContinuation { continuation in
-            guard let triggerApi = SwiftAlarmPlugin.getTriggerApi() else {
-                os_log(.error, log: AlarmManager.logger, "AlarmTriggerApi.alarmTriggered was not setup!")
-                continuation.resume()
-                return
-            }
+    // @MainActor
+    // private func notifyAlarmTriggered(alarmSettings: AlarmSettings) async {
+    //     await withCheckedContinuation { continuation in
+    //         guard let triggerApi = SwiftAlarmPlugin.getTriggerApi() else {
+    //             os_log(.error, log: AlarmManager.logger, "AlarmTriggerApi.alarmTriggered was not setup!")
+    //             continuation.resume()
+    //             return
+    //         }
 
-            os_log(.info, log: AlarmManager.logger, "Informing the Flutter plugin that alarm %d has triggered...", alarmSettings.id)
+    //         os_log(.info, log: AlarmManager.logger, "Informing the Flutter plugin that alarm %d has triggered...", alarmSettings.id)
 
-            triggerApi.alarmTriggered(alarmSettings: alarmSettings, completion: { result in   
-                if case .success = result {
-                    os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d was processed successfully by Flutter.", id)
-                } else {
-                    os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d encountered error in Flutter.", id)
-                }
-                continuation.resume()   
-            })
-        }
-    }
+    //         triggerApi.alarmTriggered(alarmSettings: alarmSettings, completion: { result in   
+    //             if case .success = result {
+    //                 os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d was processed successfully by Flutter.", id)
+    //             } else {
+    //                 os_log(.info, log: AlarmManager.logger, "Alarm triggered notification for %d encountered error in Flutter.", id)
+    //             }
+    //             continuation.resume()   
+    //         })
+    //     }
+    // }
 
     @MainActor
     private func notifyAlarmStopped(id: Int) async {
