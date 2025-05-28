@@ -286,7 +286,9 @@ class AlarmManager: NSObject {
 
     private func updateState() {
         if self.alarms.contains(where: { $1.state == .scheduled && $1.settings.warningNotificationOnKill }) {
-            AppTerminateManager.shared.startMonitoring()
+            AppTerminateManager.shared.startMonitoring(isRingingCallBack: {
+                return self.isRinging()
+            })
         } else {
             AppTerminateManager.shared.stopMonitoring()
         }

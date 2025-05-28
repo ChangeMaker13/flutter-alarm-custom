@@ -9,6 +9,8 @@
 
 # Alarm plugin for iOS and Android
 
+flutter version 3.29.3
+
 This plugin offers a straightforward interface to set and cancel alarms on both iOS and Android devices. Using native code, it handles audio playback, vibrations, system volume, and notifications seamlessly.
 
 ## 📋 Table of contents
