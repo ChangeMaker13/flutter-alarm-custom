@@ -2,7 +2,7 @@
 // ignore_for_file: deprecated_member_use_from_same_package
 
 import 'dart:async';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:alarm/service/alarm_storage.dart';
 import 'package:alarm/src/alarm_trigger_api_impl.dart';
@@ -268,6 +268,11 @@ class Alarm {
     _scheduled.add(_scheduled.value.remove(alarm));
     _ringing.add(_ringing.value.add(alarm));
     ringStream.add(alarm);
+
+    /// 커스텀 : AlarmState 값 저장
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setString('alarm_state', 'ringing');
+    });
   }
 
   static Future<void> _alarmStopped(int alarmId) async {

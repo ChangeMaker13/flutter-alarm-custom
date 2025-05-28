@@ -216,8 +216,6 @@ class AlarmManager: NSObject {
         os_log(.info, log: AlarmManager.logger, "Ring alarm for ID=%d complete.", id)
     }
 
-
-
     @MainActor
     private func notifyAlarmRang(id: Int) async {
         await withCheckedContinuation { continuation in
