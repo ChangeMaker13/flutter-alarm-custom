@@ -29,18 +29,7 @@ class AlarmRingManager: NSObject {
             targetSystemVolume = self.getSystemVolume()
         }
 
-        os_log(.debug, log: AlarmRingManager.logger, "Volume enforced: %d", volumeSettings.volumeEnforced)
-        os_log(.debug, log: AlarmRingManager.logger, "Target system volume: %f", targetSystemVolume)
-        os_log(.debug, log: AlarmRingManager.logger, "Current system volume: %f", self.getSystemVolume())
-
         if volumeSettings.volumeEnforced {
-            // os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer scheduled")
-            // self.volumeEnforcementTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            //     // os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer triggered")
-            //     // AlarmRingManager.shared.enforcementTimerTriggered(targetSystemVolume: targetSystemVolume)
-            
-            // }
-
             let timer = Timer(timeInterval: 1.0, repeats: true) { _ in
                 os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer triggered")
                 AlarmRingManager.shared.enforcementTimerTriggered(targetSystemVolume: targetSystemVolume)
@@ -138,6 +127,7 @@ class AlarmRingManager: NSObject {
     @MainActor
     private func setSystemVolume(volume: Float) async -> Float? {
         let volumeView = MPVolumeView()
+         volumeView.frame = CGRect(x: -1000, y: -1000, width: 100, height: 100)
         volumeView.showsVolumeSlider = true
         volumeView.showsRouteButton = false 
 
@@ -153,6 +143,7 @@ class AlarmRingManager: NSObject {
 
         guard let slider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider else {
             os_log(.error, log: AlarmRingManager.logger, "Volume slider could not be found.")
+            volumeView.removeFromSuperview()
             return nil
         }
 
