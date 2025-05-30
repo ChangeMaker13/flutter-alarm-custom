@@ -29,10 +29,24 @@ class AlarmRingManager: NSObject {
             targetSystemVolume = self.getSystemVolume()
         }
 
+        os_log(.debug, log: AlarmRingManager.logger, "Volume enforced: %d", volumeSettings.volumeEnforced)
+        os_log(.debug, log: AlarmRingManager.logger, "Target system volume: %f", targetSystemVolume)
+        os_log(.debug, log: AlarmRingManager.logger, "Current system volume: %f", self.getSystemVolume())
+
         if volumeSettings.volumeEnforced {
-            self.volumeEnforcementTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            // os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer scheduled")
+            // self.volumeEnforcementTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            //     // os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer triggered")
+            //     // AlarmRingManager.shared.enforcementTimerTriggered(targetSystemVolume: targetSystemVolume)
+            
+            // }
+
+            let timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+                os_log(.debug, log: AlarmRingManager.logger, "Enforcement timer triggered")
                 AlarmRingManager.shared.enforcementTimerTriggered(targetSystemVolume: targetSystemVolume)
             }
+            RunLoop.main.add(timer, forMode: .common)
+            self.volumeEnforcementTimer = timer
         }
 
         guard let audioPlayer = self.loadAudioPlayer(registrar: registrar, assetAudioPath: assetAudioPath) else {
@@ -123,10 +137,25 @@ class AlarmRingManager: NSObject {
     @discardableResult
     @MainActor
     private func setSystemVolume(volume: Float) async -> Float? {
+        os_log(.debug, log: AlarmRingManager.logger, "setSystemVolume called with volume: %f", volume)
+        os_log(.debug, log: AlarmRingManager.logger, "Is main thread: %d", Thread.isMainThread)
+    
         let volumeView = MPVolumeView()
+        volumeView.showsVolumeSlider = true
+        volumeView.showsRouteButton = false 
 
-        // We need to pause for 100ms to ensure the slider loads.
-        try? await Task.sleep(nanoseconds: UInt64(0.1 * 1_000_000_000))
+        guard let keyWindow = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) else {
+            os_log(.error, log: AlarmRingManager.logger, "No key window found")
+            return nil
+        }
+
+        keyWindow.addSubview(volumeView)
+    
+        os_log(.debug, log: AlarmRingManager.logger, "Added volumeView to window")
+
+
+        // We need to pause for 300ms to ensure the slider loads.
+        try? await Task.sleep(nanoseconds: UInt64(0.3 * 1_000_000_000))
 
         guard let slider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider else {
             os_log(.error, log: AlarmRingManager.logger, "Volume slider could not be found.")
@@ -146,7 +175,19 @@ class AlarmRingManager: NSObject {
             let currentSystemVolume = self.getSystemVolume()
             if abs(currentSystemVolume - targetSystemVolume) > 0.01 {
                 os_log(.debug, log: AlarmRingManager.logger, "System volume changed. Restoring to %f.", targetSystemVolume)
-                await self.setSystemVolume(volume: targetSystemVolume)
+                //await self.setSystemVolume(volume: targetSystemVolume)
+
+                // 👇 메인 스레드에서 실행하도록 수정
+                await MainActor.run {
+                    Task {
+                        let result = await self.setSystemVolume(volume: targetSystemVolume)
+                        os_log(.debug, log: AlarmRingManager.logger, "setSystemVolume result: %@", String(describing: result))
+                        
+                        // 볼륨 설정 후 실제 볼륨 확인
+                        let newVolume = self.getSystemVolume()
+                        os_log(.debug, log: AlarmRingManager.logger, "Volume after setting: %f", newVolume)
+                    }
+                }
             }
         }
     }

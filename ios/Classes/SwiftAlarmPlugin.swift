@@ -33,11 +33,6 @@ public class SwiftAlarmPlugin: NSObject, FlutterPlugin {
         os_log(.info, log: SwiftAlarmPlugin.logger, "Plugin registered.")
     }
 
-    //// 앱종료시 만들어지는 무한 로컬 푸시를 제거
-    // private func stopLocalPush() {
-    //     AppTerminateManager.shared.cancelRepeatingAlarm()
-    // }
-
     /// Called from AppDelegate when the app is launched.
     public static func registerBackgroundTasks() {
         BackgroundTaskManager.setup()

@@ -148,32 +148,32 @@ class AlarmManager: NSObject {
 
         ///------- 알람 체인을 구현을 위해 수정된 부분
         // 백업 알람 예약 (20초 후)
-        let backupId = id + 10000 + Int(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 90000))
-        let backupSettings = AlarmSettings(
-            id: backupId,
-            dateTime: Date().addingTimeInterval(20),
-            assetAudioPath: config.settings.assetAudioPath,
-            volumeSettings: config.settings.volumeSettings,
-            notificationSettings: config.settings.notificationSettings,
-            loopAudio: config.settings.loopAudio,
-            vibrate: config.settings.vibrate,
-            warningNotificationOnKill: config.settings.warningNotificationOnKill,
-            androidFullScreenIntent: config.settings.androidFullScreenIntent,
-            allowAlarmOverlap: config.settings.allowAlarmOverlap,
-            iOSBackgroundAudio: config.settings.iOSBackgroundAudio
-        )
+        // let backupId = id + 10000 + Int(Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 90000))
+        // let backupSettings = AlarmSettings(
+        //     id: backupId,
+        //     dateTime: Date().addingTimeInterval(20),
+        //     assetAudioPath: config.settings.assetAudioPath,
+        //     volumeSettings: config.settings.volumeSettings,
+        //     notificationSettings: config.settings.notificationSettings,
+        //     loopAudio: config.settings.loopAudio,
+        //     vibrate: config.settings.vibrate,
+        //     warningNotificationOnKill: config.settings.warningNotificationOnKill,
+        //     androidFullScreenIntent: config.settings.androidFullScreenIntent,
+        //     allowAlarmOverlap: config.settings.allowAlarmOverlap,
+        //     iOSBackgroundAudio: config.settings.iOSBackgroundAudio
+        // )
         
-        os_log(.info, log: AlarmManager.logger, "Scheduling backup alarm with ID=%d for 5 seconds later", backupId)
+        // os_log(.info, log: AlarmManager.logger, "Scheduling backup alarm with ID=%d for 5 seconds later", backupId)
         
-        // 백업 알람 설정
-        do {
-            try await self.setAlarm(alarmSettings: backupSettings)
-            os_log(.debug, log: AlarmManager.logger, "Successfully scheduled backup alarm with ID=%d", backupId)
-        } catch {
-            os_log(.error, log: AlarmManager.logger, "Failed to schedule backup alarm: %@", error.localizedDescription)
-        }
+        // // 백업 알람 설정
+        // do {
+        //     try await self.setAlarm(alarmSettings: backupSettings)
+        //     os_log(.debug, log: AlarmManager.logger, "Successfully scheduled backup alarm with ID=%d", backupId)
+        // } catch {
+        //     os_log(.error, log: AlarmManager.logger, "Failed to schedule backup alarm: %@", error.localizedDescription)
+        // }
 
-        await self.notifyAlarmRang(id: id)
+        // await self.notifyAlarmRang(id: id)
         ///-------
 
         if !config.settings.allowAlarmOverlap && self.alarms.contains(where: { $1.state == .ringing }) {
