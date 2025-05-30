@@ -137,9 +137,6 @@ class AlarmRingManager: NSObject {
     @discardableResult
     @MainActor
     private func setSystemVolume(volume: Float) async -> Float? {
-        os_log(.debug, log: AlarmRingManager.logger, "setSystemVolume called with volume: %f", volume)
-        os_log(.debug, log: AlarmRingManager.logger, "Is main thread: %d", Thread.isMainThread)
-    
         let volumeView = MPVolumeView()
         volumeView.showsVolumeSlider = true
         volumeView.showsRouteButton = false 
@@ -151,9 +148,6 @@ class AlarmRingManager: NSObject {
 
         keyWindow.addSubview(volumeView)
     
-        os_log(.debug, log: AlarmRingManager.logger, "Added volumeView to window")
-
-
         // We need to pause for 300ms to ensure the slider loads.
         try? await Task.sleep(nanoseconds: UInt64(0.3 * 1_000_000_000))
 
