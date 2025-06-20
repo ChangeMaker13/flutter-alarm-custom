@@ -53,7 +53,10 @@ class AlarmManager: NSObject {
         }
         NotificationManager.shared.dismissNotification(id: id)
 
-        await AlarmRingManager.shared.stop()
+        /// 특정 알람만 끌때 모든 알람이 중지되는거 방지
+        if self.alarms[id]?.state == .ringing {
+            await AlarmRingManager.shared.stop()
+        }
 
         if let config = self.alarms[id] {
             config.timer?.invalidate()
@@ -178,8 +181,8 @@ class AlarmManager: NSObject {
 
         /// 메인 플러터 앱에서 alarm state를 확인하는 부분(idle 상태가 맞는지. 아니라면 알람 취소)
         // FlutterSharedPreferences에서 "alarm_state" 값을 읽어온다.
-        let prefs = UserDefaults(suiteName: "FlutterSharedPreferences")
-        let alarmState = prefs?.string(forKey: "flutter.alarm_state") ?? "idle"
+        let prefs = UserDefaults.standard
+        let alarmState = prefs.string(forKey: "flutter.alarm_state") ?? "idle"
 
         os_log("[package_test] prefs.string(forKey: \"alarm_state\") : %@", alarmState)
 
