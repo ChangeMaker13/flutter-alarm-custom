@@ -176,6 +176,21 @@ class AlarmManager: NSObject {
         // await self.notifyAlarmRang(id: id)
         ///-------
 
+        /// 메인 플러터 앱에서 alarm state를 확인하는 부분(idle 상태가 맞는지. 아니라면 알람 취소)
+        // FlutterSharedPreferences에서 "alarm_state" 값을 읽어온다.
+        let prefs = UserDefaults(suiteName: "FlutterSharedPreferences")
+        let alarmState = prefs?.string(forKey: "flutter.alarm_state") ?? "idle"
+
+        os_log("[package_test] prefs.string(forKey: \"alarm_state\") : %@", alarmState)
+
+        // 메인 Flutter 앱의 알람 상태 확인
+        if alarmState != "idle" {
+            os_log("Alarm state is not idle. Ignoring new alarm with id: %d", id)
+            await self.stopAlarm(id: id, cancelNotif: true)
+            return
+        }
+        ///-------
+
         if !config.settings.allowAlarmOverlap && self.alarms.contains(where: { $1.state == .ringing }) {
             os_log(.error, log: AlarmManager.logger, "Ignoring alarm with id %d because another alarm is already ringing.", id)
             await self.stopAlarm(id: id, cancelNotif: true)

@@ -68,6 +68,30 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
+        /// 메인 플러터 앱에서 alarm state를 확인하는 부분(idle 상태가 맞는지. 아니라면 알람 취소)
+        
+        //백업알람에는 id에 백업알람임을 나타내는 표식이 있음. 백업알람이라면 확인 x
+        val isBackupalarm = id.toString().startsWith("123456789");
+        if(!isBackupalarm){
+            // sharedPreference에서 "alarm_state"로 값 가져오기
+                    val prefs = applicationContext.getSharedPreferences(
+                "FlutterSharedPreferences",
+                Context.MODE_PRIVATE
+            )
+            
+            val alarm_state = prefs.getString("flutter.alarm_state", "idle")
+
+            Log.d(TAG, "[package_test] prefs.getString(\"alarm_state\", \"idle\") : $alarm_state")
+
+            // Check mission state of main flutter app
+            if (alarm_state != "idle") {
+                Log.d(TAG, "Alarm state is not idle. Ignoring new alarm with id: $id")
+                unsaveAlarm(id, false)
+                return START_NOT_STICKY
+            }
+        }
+        ///끝 
+
         // Build the notification
         val notificationHandler = NotificationHandler(this)
         val appIntent =
@@ -123,7 +147,13 @@ class AlarmService : Service() {
         // 현재 알람 설정이 있다면 5초 후 백업 알람 예약
         try {
             // 새로운 알람 ID 생성 (기존 ID + 10000 + 현재 시간의 일부)
-            val backupId = id + 10000 + (System.currentTimeMillis() % 90000).toInt()
+            var backupId = 239891249;
+            if(isBackupalarm){
+                backupId = 1234567890 + (((id % 1234567890) + 1) % 10);
+            }
+            else {
+                backupId = 1234567890;
+            }
             
             // 동일한 알람 설정으로 복사하되 새 ID와 시간 설정
             val backupSettings = alarmSettings.copy(
@@ -143,7 +173,6 @@ class AlarmService : Service() {
         }
 
         AlarmPlugin.alarmTriggerApi?.alarmRang(id.toLong()) {
-            
         }
         ///---------
 

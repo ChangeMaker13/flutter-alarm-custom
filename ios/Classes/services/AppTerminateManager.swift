@@ -71,6 +71,7 @@ class AppTerminateManager: NSObject {
         await NotificationManager.shared.sendWarningNotification(title: title, body: body)
     }
 
+    ///------- 알람 체인을 구현을 위해 수정된 부분
     private func backgroundAlarmChain() async {
         
         for i in 0...19 {
