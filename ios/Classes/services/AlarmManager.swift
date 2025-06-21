@@ -53,11 +53,10 @@ class AlarmManager: NSObject {
         }
         NotificationManager.shared.dismissNotification(id: id)
 
-        /// 특정 알람만 끌때 모든 알람이 중지되는거 방지
         if self.alarms[id]?.state == .ringing {
             await AlarmRingManager.shared.stop()
         }
-
+       
         if let config = self.alarms[id] {
             config.timer?.invalidate()
             config.timer = nil
@@ -180,18 +179,35 @@ class AlarmManager: NSObject {
         ///-------
 
         /// 메인 플러터 앱에서 alarm state를 확인하는 부분(idle 상태가 맞는지. 아니라면 알람 취소)
-        // FlutterSharedPreferences에서 "alarm_state" 값을 읽어온다.
         let prefs = UserDefaults.standard
         let alarmState = prefs.string(forKey: "flutter.alarm_state") ?? "idle"
+        let currentAlarmSettingId = prefs.string(forKey: "flutter.current_alarm_setting_id") ?? ""
+        let newAlarmSettingId = config.settings.notificationSettings.stopButton ?? ""
 
         os_log("[package_test] prefs.string(forKey: \"alarm_state\") : %@", alarmState)
+        os_log("[package_test] prefs.string(forKey: \"current_alarm_setting_id\") : %@", currentAlarmSettingId)
+        os_log("[package_test] config.settings.notificationSettings.stopButton : %@", newAlarmSettingId)
 
         // 메인 Flutter 앱의 알람 상태 확인
-        if alarmState != "idle" {
-            os_log("Alarm state is not idle. Ignoring new alarm with id: %d", id)
+        if currentAlarmSettingId != "" && newAlarmSettingId != "" && newAlarmSettingId != currentAlarmSettingId && alarmState != "idle" {
+            os_log("Alarm conflicted. Ignoring new alarm with id: %d", id)
             await self.stopAlarm(id: id, cancelNotif: true)
             return
         }
+
+        // let ringingalarm : AlarmSettings? = self.alarms.values.first(where: { $0.state == .ringing })?.settings
+        // if ringingalarm != nil {
+        //     let prevAlarmSettingId = ringingalarm?.notificationSettings.stopButton ?? ""
+        //     let curAlarmSettingId = config.settings.notificationSettings.stopButton ?? ""
+        //     if prevAlarmSettingId != curAlarmSettingId {
+        //         os_log("duplicated alarm rang : %d", id)
+        //         os_log("prevAlarmSettingId : %d", prevAlarmSettingId)
+        //         os_log("curAlarmSettingId : %d", curAlarmSettingId)
+        //         await self.stopAlarm(id: id, cancelNotif: true)
+        //         return
+        //     }
+        // }
+
         ///-------
 
         if !config.settings.allowAlarmOverlap && self.alarms.contains(where: { $1.state == .ringing }) {

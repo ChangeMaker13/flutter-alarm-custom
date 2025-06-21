@@ -31,7 +31,8 @@ class AppTerminateManager: NSObject {
 
         self.isRinging = isRingingCallBack
 
-        NotificationCenter.default.addObserver(self, selector: #selector(self.appWillTerminate(notification:)), name: UIApplication.willTerminateNotification, object: nil)
+        //NotificationCenter.default.addObserver(self, selector: #selector(self.appWillTerminate(notification:)), name: UIApplication.willTerminateNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.appDidEnterBackground(notification:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
         self.observerAdded = true
         os_log(.debug, log: AppTerminateManager.logger, "App terminate monitoring started.")
     }
@@ -42,15 +43,34 @@ class AppTerminateManager: NSObject {
             return
         }
 
-        NotificationCenter.default.removeObserver(self, name: UIApplication.willTerminateNotification, object: nil)
+        //NotificationCenter.default.removeObserver(self, name: UIApplication.willTerminateNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
         self.observerAdded = false
         os_log(.debug, log: AppTerminateManager.logger, "App terminate monitoring stopped.")
     }
 
     @objc private func appWillTerminate(notification: Notification) {
-        os_log(.info, log: AppTerminateManager.logger, "App is going to terminate.")
-        os_log(.info, log: AppTerminateManager.logger, "callback nil: %{public}@", String(describing: self.isRinging))
-        os_log(.info, log: AppTerminateManager.logger, "is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
+        os_log("App is going to terminate.")
+        os_log("callback nil: %{public}@", String(describing: self.isRinging))
+        os_log("is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
+
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            if(self.isRinging?() ?? false) {
+                //await self.backgroundAlarmChain()
+            }
+            else{
+                await self.sendWarningNotification()
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+    }
+
+    @objc private func appDidEnterBackground(notification: Notification) {
+        os_log("App did enter background.")
+        os_log("callback nil: %{public}@", String(describing: self.isRinging))
+        os_log("is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
 
         let semaphore = DispatchSemaphore(value: 0)
         Task {
@@ -73,7 +93,6 @@ class AppTerminateManager: NSObject {
 
     ///------- 알람 체인을 구현을 위해 수정된 부분
     private func backgroundAlarmChain() async {
-        
         for i in 0...19 {
             await self.schedule60SecondRepeatingAlarm(afterSeconds: i * 3)
         }
