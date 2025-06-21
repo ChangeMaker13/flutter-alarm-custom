@@ -189,7 +189,7 @@ class AlarmManager: NSObject {
         os_log("[package_test] config.settings.notificationSettings.stopButton : %@", newAlarmSettingId)
 
         // 메인 Flutter 앱의 알람 상태 확인
-        if currentAlarmSettingId != "" && newAlarmSettingId != "" && newAlarmSettingId != currentAlarmSettingId && alarmState != "idle" {
+        if currentAlarmSettingId != "" && newAlarmSettingId != "" && (newAlarmSettingId != currentAlarmSettingId) && alarmState != "idle" {
             os_log("Alarm conflicted. Ignoring new alarm with id: %d", id)
             await self.stopAlarm(id: id, cancelNotif: true)
             return

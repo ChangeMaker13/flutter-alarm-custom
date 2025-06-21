@@ -68,30 +68,6 @@ class AlarmService : Service() {
             return START_NOT_STICKY
         }
 
-        /// 메인 플러터 앱에서 alarm state를 확인하는 부분(idle 상태가 맞는지. 아니라면 알람 취소)
-        
-        //백업알람에는 id에 백업알람임을 나타내는 표식이 있음. 백업알람이라면 확인 x
-        val isBackupalarm = id.toString().startsWith("123456789");
-        if(!isBackupalarm){
-            // sharedPreference에서 "alarm_state"로 값 가져오기
-                    val prefs = applicationContext.getSharedPreferences(
-                "FlutterSharedPreferences",
-                Context.MODE_PRIVATE
-            )
-            
-            val alarm_state = prefs.getString("flutter.alarm_state", "idle")
-
-            Log.d(TAG, "[package_test] prefs.getString(\"alarm_state\", \"idle\") : $alarm_state")
-
-            // Check mission state of main flutter app
-            if (alarm_state != "idle") {
-                Log.d(TAG, "Alarm state is not idle. Ignoring new alarm with id: $id")
-                unsaveAlarm(id, false)
-                return START_NOT_STICKY
-            }
-        }
-        ///끝 
-
         // Build the notification
         val notificationHandler = NotificationHandler(this)
         val appIntent =
@@ -125,6 +101,34 @@ class AlarmService : Service() {
             pendingIntent,
             id
         )
+
+        /// 알람 충돌 방지
+        // 백업알람에는 id에 백업알람임을 나타내는 표식이 있음. 백업알람이라면 확인 x
+        val isBackupalarm = id.toString().startsWith("123456789")
+        if(!isBackupalarm){
+            // sharedPreference에서 "alarm_state"로 값 가져오기
+                    val prefs = applicationContext.getSharedPreferences(
+                "FlutterSharedPreferences",
+                Context.MODE_PRIVATE
+            )
+            
+            val alarm_state = prefs.getString("flutter.alarm_state", "idle")
+            val currentAlarmSettingId = prefs.getString("flutter.current_alarm_setting_id", "")
+            val newAlarmSettingId = alarmSettings.notificationSettings.stopButton ?: ""
+
+            Log.d(TAG, "[package_test] prefs.getString(\"alarm_state\", \"idle\") : $alarm_state")
+            Log.d(TAG, "[package_test] prefs.getString(\"flutter.current_alarm_setting_id\", \"\") : $currentAlarmSettingId")
+            Log.d(TAG, "[package_test] alarmSettings.notificationSettings.stopButton : $newAlarmSettingId")
+
+            // Check mission state of main flutter app
+            if (alarm_state != "idle" && currentAlarmSettingId != "" && newAlarmSettingId != ""
+            && currentAlarmSettingId != newAlarmSettingId) {
+                Log.d(TAG, "Alarm state is not idle. Ignoring new alarm with id: $id")
+                unsaveAlarm(id, false)
+                return START_NOT_STICKY
+            }
+        }
+        ///끝 
 
         // Start the service in the foreground
         try {
