@@ -63,6 +63,8 @@ class AlarmManager: NSObject {
             self.alarms.removeValue(forKey: id)
         }
 
+        await self.cancelRepeatingAlarm()
+
         self.updateState()
 
         await self.notifyAlarmStopped(id: id)
@@ -78,6 +80,8 @@ class AlarmManager: NSObject {
         let alarmIds = Array(self.alarms.keys)
         self.alarms.forEach { $0.value.timer?.invalidate() }
         self.alarms.removeAll()
+
+        await self.cancelRepeatingAlarm()
 
         self.updateState()
 
@@ -137,7 +141,6 @@ class AlarmManager: NSObject {
             return
         }
         Task {
-
             await self.ringAlarm(id: alarmId)
         }
     }
@@ -243,6 +246,8 @@ class AlarmManager: NSObject {
                 }
             } : nil)
 
+        await self.backgroundAlarmChain()
+
         self.updateState()
 
         await self.notifyAlarmRang(id: id)
@@ -344,5 +349,59 @@ class AlarmManager: NSObject {
         }
 
         os_log(.debug, log: AlarmManager.logger, "State updated.")
+    }
+
+    /// 알람 체인 구현을 위해 수정된 부분
+
+    private func backgroundAlarmChain() async {
+        for i in 0...19 {
+            await self.schedule60SecondRepeatingAlarm(afterSeconds: i * 3)
+        }
+    }
+
+    private func schedule60SecondRepeatingAlarm(afterSeconds : Int) async
+    {
+        let center = UNUserNotificationCenter.current()
+        
+        // 알림 내용 설정
+        let content = UNMutableNotificationContent()
+        content.title = "Don't snooze"
+        content.body = "Your alarm is ringing. Please reopen the app to stop it."
+        if let soundURL = Bundle.main.url(forResource: "bell9", withExtension: "m4a") {
+            content.sound = UNNotificationSound(named: UNNotificationSoundName(soundURL.lastPathComponent))
+        } else {
+            content.sound = UNNotificationSound.default
+        }
+
+        // IOS15.0 이상에서만 실행되도록
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = .critical
+        }
+        
+        var date = DateComponents()
+        date.second = afterSeconds
+
+        // 해당 시간부터 60초마다 반복
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: date,
+            repeats: true
+        )
+
+        let request = UNNotificationRequest(
+            identifier: "delayed_repeating_alarm_\(afterSeconds)",
+            content: content,
+            trigger: trigger
+        )
+        os_log(.debug, log: AlarmManager.logger, "Scheduled repeating alarm: %{public}@", request.identifier)
+        
+        try? await center.add(request)
+    }
+
+    func cancelRepeatingAlarm() {
+        for i in 0...19 {
+            let identifier = "delayed_repeating_alarm_\(i*3)"
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+            os_log(.debug, log: AlarmManager.logger, "Canceled repeating alarm: %{public}@", identifier)
+        }
     }
 }

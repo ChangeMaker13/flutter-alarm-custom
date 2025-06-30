@@ -15,7 +15,12 @@ class AppTerminateManager: NSObject {
     override private init() {
         super.init()
         os_log(.debug, log: AppTerminateManager.logger, "AppTerminateManager initialized.")
-        self.cancelRepeatingAlarm()
+
+        let prefs = UserDefaults.standard
+        let alarmState = prefs.string(forKey: "flutter.alarm_state") ?? "idle"
+        if(alarmState != "ringing") {
+            self.cancelRepeatingAlarm()
+        }
     }
 
     func setWarningNotification(title: String, body: String) {
@@ -31,8 +36,8 @@ class AppTerminateManager: NSObject {
 
         self.isRinging = isRingingCallBack
 
-        //NotificationCenter.default.addObserver(self, selector: #selector(self.appWillTerminate(notification:)), name: UIApplication.willTerminateNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(self.appDidEnterBackground(notification:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.appWillTerminate(notification:)), name: UIApplication.willTerminateNotification, object: nil)
+        //NotificationCenter.default.addObserver(self, selector: #selector(self.appDidEnterBackground(notification:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
         self.observerAdded = true
         os_log(.debug, log: AppTerminateManager.logger, "App terminate monitoring started.")
     }
@@ -43,8 +48,8 @@ class AppTerminateManager: NSObject {
             return
         }
 
-        //NotificationCenter.default.removeObserver(self, name: UIApplication.willTerminateNotification, object: nil)
-        NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIApplication.willTerminateNotification, object: nil)
+        //NotificationCenter.default.removeObserver(self, name: UIApplication.didEnterBackgroundNotification, object: nil)
         self.observerAdded = false
         os_log(.debug, log: AppTerminateManager.logger, "App terminate monitoring stopped.")
     }
@@ -53,37 +58,43 @@ class AppTerminateManager: NSObject {
         os_log("App is going to terminate.")
         os_log("callback nil: %{public}@", String(describing: self.isRinging))
         os_log("is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
+        let prefs = UserDefaults.standard
+        let alarmState = prefs.string(forKey: "flutter.alarm_state") ?? "idle"
 
         let semaphore = DispatchSemaphore(value: 0)
         Task {
-            if(self.isRinging?() ?? false) {
-                //await self.backgroundAlarmChain()
-            }
-            else{
-                await self.sendWarningNotification()
-            }
-            semaphore.signal()
-        }
-        semaphore.wait()
-    }
-
-    @objc private func appDidEnterBackground(notification: Notification) {
-        os_log("App did enter background.")
-        os_log("callback nil: %{public}@", String(describing: self.isRinging))
-        os_log("is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
-
-        let semaphore = DispatchSemaphore(value: 0)
-        Task {
-            if(self.isRinging?() ?? false) {
+            if(alarmState != "idle" && alarmState != "ringing") {
                 await self.backgroundAlarmChain()
             }
             else{
-                await self.sendWarningNotification()
+                let isRinging = self.isRinging?() ?? false
+                if(!isRinging) {
+                    await self.sendWarningNotification()
+                }
             }
+
             semaphore.signal()
         }
         semaphore.wait()
     }
+
+    // @objc private func appDidEnterBackground(notification: Notification) {
+    //     os_log("App did enter background.")
+    //     os_log("callback nil: %{public}@", String(describing: self.isRinging))
+    //     os_log("is ringing: %{public}@", String(describing: self.isRinging?() ?? false))
+
+    //     let semaphore = DispatchSemaphore(value: 0)
+    //     Task {
+    //         if(self.isRinging?() ?? false) {
+    //             await self.backgroundAlarmChain()
+    //         }
+    //         else{
+    //             await self.sendWarningNotification()
+    //         }
+    //         semaphore.signal()
+    //     }
+    //     semaphore.wait()
+    // }
 
     private func sendWarningNotification() async {
         let title = self.notificationTitleOnKill ?? "Your alarms may not ring"
@@ -105,7 +116,7 @@ class AppTerminateManager: NSObject {
         // 알림 내용 설정
         let content = UNMutableNotificationContent()
         content.title = "Don't snooze"
-        content.body = "Your alarm is ringing. Please reopen the app to stop it."
+        content.body = "Please keep the app open until you’ve completed the mission."
         if let soundURL = Bundle.main.url(forResource: "bell9", withExtension: "m4a") {
             content.sound = UNNotificationSound(named: UNNotificationSoundName(soundURL.lastPathComponent))
         } else {
